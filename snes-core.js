@@ -1,5 +1,5 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA para iOS Safari (Caminho B)
+ * SNES-CORE.JS - Orquestrador Sênior PWA para iOS Safari (Caminho B - Libretro Wired)
  * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch Multi-Eixo
  */
 
@@ -29,7 +29,6 @@
 
     async function saveSRAMOffline(cartId, sramData) {
         try {
-            // Tenta blindar contra a exclusão automática de cache de 7 dias da Apple
             if (navigator.storage && navigator.storage.persist) {
                 await navigator.storage.persist();
             }
@@ -66,32 +65,33 @@
         'A': 0, 'B': 8, 'X': 1, 'Y': 9, 'L': 10, 'R': 11
     };
 
-    let activeTouches = new Map();
-
-    function setupTouchGamepad(coreInstance) {
+    function setupTouchGamepad() {
         const gamepadEl = document.getElementById('gamepad');
         if (!gamepadEl) return;
 
         function handleTouchChange(e) {
-            e.preventDefault(); // Bloqueia gestos nativos do iOS (Zoom/Scroll)
+            e.preventDefault(); 
             const currentButtonsPressed = new Set();
 
             for (let i = 0; i < e.touches.length; i++) {
                 const touch = e.touches[i];
-                // Identifica qual botão HTML está debaixo da coordenada X/Y exata do dedo
                 const target = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (target && target.dataset && target.dataset.key) {
                     currentButtonsPressed.add(target.dataset.key);
                 }
             }
 
-            // Mapeia para o emulador: Envia Press/Release apenas para o que mudou
             for (const [keyName, bitCode] of Object.entries(keyMap)) {
                 if (currentButtonsPressed.has(keyName)) {
-                    if (coreInstance && coreInstance.buttonPress) coreInstance.buttonPress(bitCode);
+                    if (window.Module && window.Module._libretro_set_input_state) {
+                        // Envia comando para a memória C++ do processador
+                        window.Module._libretro_set_input_state(0, bitCode, 1);
+                    }
                     highlightButton(keyName, true);
                 } else {
-                    if (coreInstance && coreInstance.buttonRelease) coreInstance.buttonRelease(bitCode);
+                    if (window.Module && window.Module._libretro_set_input_state) {
+                        window.Module._libretro_set_input_state(0, bitCode, 0);
+                    }
                     highlightButton(keyName, false);
                 }
             }
@@ -104,7 +104,6 @@
             }
         }
 
-        // Conecta os ouvintes na zona do controle, processando movimento contínuo
         gamepadEl.addEventListener('touchstart', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchmove', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchend', handleTouchChange, { passive: false });
@@ -112,7 +111,7 @@
     }
 
     // =========================================================================
-    // 3. BOTÃO DE SEGURANÇA: EXPORTAÇÃO MANUAL PARA O APP ARQUIVOS DO IPHONE
+    // 3. BOTÃO DE SEGURANÇA: EXPORTAÇÃO MANUAL PARA O APP ARQUIVOS
     // =========================================================================
     function setupExportButton(cartId) {
         const btnExport = document.getElementById('btn-export-save');
@@ -137,43 +136,57 @@
     }
 
     // =========================================================================
-    // 4. INICIADOR SÊNIOR (THE GATEKEEPER)
+    // 4. INICIADOR SÊNIOR E PONTE EMSCRIPTEN (THE GATEKEEPER)
     // =========================================================================
     window.SnesPlayer = {
         init: async function(config) {
-            console.log("[SnesPlayer] Inicializando motor de execução limpo no iOS...");
+            console.log("[SnesPlayer] Baixando ROM e preparando memória RAM...");
 
-            // 1. Carrega dados em Paralelo: ROM + WASM + Save Antigo
-            const [romResponse, wasmResponse, savedSram] = await Promise.all([
+            // 1. Download paralelo da ROM e busca por Save antigo
+            const [romResponse, savedSram] = await Promise.all([
                 fetch(config.romPath),
-                fetch(config.corePath),
                 loadSRAMOffline(config.cartId)
             ]);
 
             if (!romResponse.ok) throw new Error("ROM não encontrada no servidor.");
-            if (!wasmResponse.ok) throw new Error("Motor WASM não encontrado.");
-
             const romBuffer = await romResponse.arrayBuffer();
             
-            // 2. Verifica MIME Type rigoroso da Apple
-            const contentType = wasmResponse.headers.get('content-type');
-            if (contentType && !contentType.includes('wasm') && !contentType.includes('octet-stream')) {
-                console.warn("[Aviso Apple] O servidor não retornou application/wasm. A Cloudflare deve ser ativada na produção.");
-            }
-
-            // 3. Inicializa Controles de Toque Multi-Eixo
-            setupTouchGamepad(window.ModuleCore);
+            setupTouchGamepad();
             setupExportButton(config.cartId);
 
-            // 4. Injeta a ROM e o Save offline na memória e inicia o loop de áudio/vídeo
-            // Nota: Em protótipos com motores Emscripten/Libretro leves, ligamos o Module
-            if (window.initSnes9xCore) {
-                await window.initSnes9xCore(config.canvas, romBuffer, savedSram, (newSram) => {
-                    saveSRAMOffline(config.cartId, newSram);
-                });
-            } else {
-                console.log("[SnesPlayer] Motor WASM base conectado. Aguardando injeção do binário snes9x.");
-            }
+            console.log("[SnesPlayer] ROM baixada com sucesso (" + (romBuffer.byteLength / 1024 / 1024).toFixed(2) + " MB). Configurando ponte Libretro...");
+
+            // 2. A PONTE MÁGICA: Configuração global do Emscripten para o arquivo snes9x.js
+            window.Module = {
+                canvas: config.canvas,
+                arguments: ['/rom.sfc'], // Diz à Libretro qual arquivo do disco virtual ela deve abrir
+                locateFile: function(path) {
+                    if (path.endsWith('.wasm')) return 'snes9x.wasm';
+                    return path;
+                },
+                print: function(text) { console.log("[SNES Core]:", text); },
+                printErr: function(text) { console.error("[SNES Err]:", text); },
+                
+                // O gancho pré-execução: Monta o disco virtual na memória RAM antes de ligar o console
+                preRun: [function() {
+                    console.log("[SnesPlayer] Injetando SuperMarioWorld.smc no Sistema de Arquivos Virtual (FS)...");
+                    window.Module.FS.writeFile('/rom.sfc', new Uint8Array(romBuffer));
+                    
+                    if (savedSram) {
+                        console.log("[SnesPlayer] Save anterior encontrado! Injetando arquivo .srm...");
+                        window.Module.FS.writeFile('/rom.srm', new Uint8Array(savedSram));
+                    }
+                }],
+                
+                onRuntimeInitialized: function() {
+                    console.log("[SnesPlayer] BOOT CONCLUÍDO COM SUCESSO! O motor Super Nintendo está rodando!");
+                }
+            };
+
+            // 3. Injeta dinamicamente o orquestrador da Libretro que subimos no GitHub (snes9x.js)
+            const coreScript = document.createElement('script');
+            coreScript.src = 'snes9x.js';
+            document.body.appendChild(coreScript);
             
             return true;
         }
