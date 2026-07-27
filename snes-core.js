@@ -1,5 +1,5 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA para iOS Safari (Caminho B - Libretro Wired)
+ * SNES-CORE.JS - Orquestrador Sênior PWA para iOS Safari (Caminho B - ES6 Modular)
  * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch Multi-Eixo
  */
 
@@ -84,7 +84,6 @@
             for (const [keyName, bitCode] of Object.entries(keyMap)) {
                 if (currentButtonsPressed.has(keyName)) {
                     if (window.Module && window.Module._libretro_set_input_state) {
-                        // Envia comando para a memória C++ do processador
                         window.Module._libretro_set_input_state(0, bitCode, 1);
                     }
                     highlightButton(keyName, true);
@@ -136,13 +135,12 @@
     }
 
     // =========================================================================
-    // 4. INICIADOR SÊNIOR E PONTE EMSCRIPTEN (THE GATEKEEPER)
+    // 4. INICIADOR SÊNIOR ES6 MODULE E PONTE EMSCRIPTEN (THE GATEKEEPER)
     // =========================================================================
     window.SnesPlayer = {
         init: async function(config) {
             console.log("[SnesPlayer] Baixando ROM e preparando memória RAM...");
 
-            // 1. Download paralelo da ROM e busca por Save antigo
             const [romResponse, savedSram] = await Promise.all([
                 fetch(config.romPath),
                 loadSRAMOffline(config.cartId)
@@ -154,12 +152,12 @@
             setupTouchGamepad();
             setupExportButton(config.cartId);
 
-            console.log("[SnesPlayer] ROM baixada com sucesso (" + (romBuffer.byteLength / 1024 / 1024).toFixed(2) + " MB). Configurando ponte Libretro...");
+            console.log("[SnesPlayer] ROM baixada com sucesso (" + (romBuffer.byteLength / 1024 / 1024).toFixed(2) + " MB). Configurando ponte Libretro ES6...");
 
-            // 2. A PONTE MÁGICA: Configuração global do Emscripten para o arquivo snes9x.js
+            // 1. A PONTE MÁGICA: Configuração global do Emscripten
             window.Module = {
                 canvas: config.canvas,
-                arguments: ['/rom.sfc'], // Diz à Libretro qual arquivo do disco virtual ela deve abrir
+                arguments: ['/rom.sfc'],
                 locateFile: function(path) {
                     if (path.endsWith('.wasm')) return 'snes9x.wasm';
                     return path;
@@ -167,7 +165,6 @@
                 print: function(text) { console.log("[SNES Core]:", text); },
                 printErr: function(text) { console.error("[SNES Err]:", text); },
                 
-                // O gancho pré-execução: Monta o disco virtual na memória RAM antes de ligar o console
                 preRun: [function() {
                     console.log("[SnesPlayer] Injetando SuperMarioWorld.smc no Sistema de Arquivos Virtual (FS)...");
                     window.Module.FS.writeFile('/rom.sfc', new Uint8Array(romBuffer));
@@ -183,10 +180,23 @@
                 }
             };
 
-            // 3. Injeta dinamicamente o orquestrador da Libretro que subimos no GitHub (snes9x.js)
-            const coreScript = document.createElement('script');
-            coreScript.src = 'snes9x.js';
-            document.body.appendChild(coreScript);
+            // 2. INJEÇÃO ES6 MODULAR (Elimina o erro do import.meta):
+            try {
+                console.log("[SnesPlayer] Importando módulo ES6 nativo do Snes9x...");
+                // A importação dinâmica avisa ao navegador que o arquivo PODE usar 'import.meta'
+                const coreModule = await import('./snes9x.js');
+                
+                // Se o compilador gerou uma função fábrica de módulo (Padrão Emscripten MODULARIZE=1)
+                if (coreModule && typeof coreModule.default === 'function') {
+                    console.log("[SnesPlayer] Executando Factory Function do Emscripten...");
+                    await coreModule.default(window.Module);
+                } else {
+                    console.log("[SnesPlayer] Módulo ES6 global acionado com sucesso.");
+                }
+            } catch (importErr) {
+                console.error("[SnesPlayer] Erro fatal na injeção do módulo ES6:", importErr);
+                alert("Erro de arquitetura no navegador. Verifique os logs de módulo.");
+            }
             
             return true;
         }
