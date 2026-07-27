@@ -1,13 +1,13 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - 12 Botões Libretro)
- * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch Multi-Eixo
+ * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Libretro Input Wired)
+ * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch/Mouse Multi-Eixo
  */
 
 (function(window) {
     'use strict';
 
     // =========================================================================
-    // 1. GESTÃO DE ARMAZENAMENTO OFFLINE (INDEXED DB - PROTEÇÃO CONTRA IOS)
+    // 1. GESTÃO DE ARMAZENAMENTO OFFLINE (INDEXED DB)
     // =========================================================================
     const DB_NAME = 'SnesNfcSaves';
     const STORE_NAME = 'sram_store';
@@ -58,14 +58,67 @@
     }
 
     // =========================================================================
-    // 2. SISTEMA DE CONTROLE TÁTIL CONTINUO (SLIDING D-PAD MULTI-TOUCH)
+    // 2. SISTEMA DE CONTROLE UNIVERSAL (VARREDURA DINÂMICA DE MEMÓRIA LIBRETRO)
     // =========================================================================
-    // MAPEAMENTO OFICIAL RETROPAD LIBRETRO: B=0, Y=1, Select=2, Start=3, Up=4, Down=5, Left=6, Right=7, A=8, X=9, L=10, R=11
+    // Tabela de Bitmask Oficial Libretro: B=0, Y=1, Select=2, Start=3, Up=4, Down=5, Left=6, Right=7, A=8, X=9, L=10, R=11
     const keyMap = {
         'UP': 4, 'DOWN': 5, 'LEFT': 6, 'RIGHT': 7,
         'B': 0, 'Y': 1, 'SELECT': 2, 'START': 3,
         'A': 8, 'X': 9, 'L': 10, 'R': 11
     };
+
+    // Tabela de Códigos de Teclado (Para simulação nativa se o bind C++ falhar)
+    const kbdMap = {
+        'UP': 'ArrowUp', 'DOWN': 'ArrowDown', 'LEFT': 'ArrowLeft', 'RIGHT': 'ArrowRight',
+        'START': 'Enter', 'SELECT': 'ShiftRight', 'A': 'KeyX', 'B': 'KeyZ', 'X': 'KeyS', 'Y': 'KeyA', 'L': 'KeyQ', 'R': 'KeyW'
+    };
+
+    let inputHandlerFunc = null;
+
+    function detectLibretroInputEngine() {
+        if (!window.Module) return;
+        
+        // Procura no módulo C++ compilado qual é o nome exato da função de controle nesta versão
+        const possibleNames = ['_libretro_set_input_state', '_cmd_key', '_set_key', '_input_state', 'ccall', 'cwrap'];
+        for (const name of possibleNames) {
+            if (typeof window.Module[name] === 'function') {
+                console.log(`[SnesPlayer] Motor de controle C++ detectado: Module.${name}`);
+                inputHandlerFunc = window.Module[name];
+                break;
+            }
+        }
+        
+        if (!inputHandlerFunc) {
+            console.warn("[SnesPlayer] Aviso: Função de bitmask direta não encontrada. Ativando ponte de teclado virtual (Fallback).");
+        }
+    }
+
+    function sendCommand(keyName, isPressed) {
+        const bitCode = keyMap[keyName];
+        
+        // 1. Tenta envio direto para a memória C++ da Libretro
+        if (inputHandlerFunc && bitCode !== undefined) {
+            try {
+                if (inputHandlerFunc.length === 3) {
+                    inputHandlerFunc(0, bitCode, isPressed ? 1 : 0);
+                } else if (inputHandlerFunc.length === 2) {
+                    inputHandlerFunc(bitCode, isPressed ? 1 : 0);
+                }
+            } catch(e) { /* Fallback silencioso para teclado abaixo */ }
+        }
+
+        // 2. Envia simultaneamente evento de teclado virtual para garantir resposta do Canvas
+        const kbdKey = kbdMap[keyName];
+        if (kbdKey) {
+            const eventType = isPressed ? 'keydown' : 'keyup';
+            const event = new KeyboardEvent(eventType, {
+                key: kbdKey, code: kbdKey, keyCode: isPressed ? 13 : 0, bubbles: true, cancelable: true
+            });
+            document.dispatchEvent(event);
+            const canvasEl = document.getElementById('game-canvas');
+            if (canvasEl) canvasEl.dispatchEvent(event);
+        }
+    }
 
     function setupTouchGamepad() {
         const gamepadEl = document.getElementById('gamepad');
@@ -83,16 +136,12 @@
                 }
             }
 
-            for (const [keyName, bitCode] of Object.entries(keyMap)) {
+            for (const keyName of Object.keys(keyMap)) {
                 if (currentButtonsPressed.has(keyName)) {
-                    if (window.Module && window.Module._libretro_set_input_state) {
-                        window.Module._libretro_set_input_state(0, bitCode, 1);
-                    }
+                    sendCommand(keyName, true);
                     highlightButton(keyName, true);
                 } else {
-                    if (window.Module && window.Module._libretro_set_input_state) {
-                        window.Module._libretro_set_input_state(0, bitCode, 0);
-                    }
+                    sendCommand(keyName, false);
                     highlightButton(keyName, false);
                 }
             }
@@ -101,14 +150,25 @@
         function highlightButton(keyName, isPressed) {
             const el = document.querySelector(`[data-key="${keyName}"]`);
             if (el) {
-                el.style.filter = isPressed ? 'brightness(1.8) drop-shadow(0 0 8px #fff)' : 'none';
+                el.style.filter = isPressed ? 'brightness(2.0) drop-shadow(0 0 10px #fff)' : 'none';
+                el.style.transform = isPressed ? 'scale(0.92)' : 'scale(1)';
             }
         }
 
+        // Conexão de Toque Mobile (iPhone)
         gamepadEl.addEventListener('touchstart', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchmove', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchend', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchcancel', handleTouchChange, { passive: false });
+
+        // Conexão de Mouse (Para testes no Windows Edge sem precisar recarregar o F12!)
+        const allBtns = gamepadEl.querySelectorAll('[data-key]');
+        allBtns.forEach(btn => {
+            const key = btn.dataset.key;
+            btn.addEventListener('mousedown', (e) => { e.preventDefault(); sendCommand(key, true); highlightButton(key, true); });
+            btn.addEventListener('mouseup', (e) => { e.preventDefault(); sendCommand(key, false); highlightButton(key, false); });
+            btn.addEventListener('mouseleave', () => { sendCommand(key, false); highlightButton(key, false); });
+        });
     }
 
     // =========================================================================
@@ -167,7 +227,7 @@
                 printErr: function(text) { console.error("[SNES Err]:", text); },
                 
                 preRun: [function() {
-                    console.log("[SnesPlayer] Injetando SuperMarioWorld.smc no Sistema de Arquivos Virtual (FS)...");
+                    console.log("[SnesPlayer] Injetando ROM no Sistema de Arquivos Virtual (FS)...");
                     window.Module.FS.writeFile('/rom.sfc', new Uint8Array(romBuffer));
                     
                     if (savedSram) {
@@ -178,6 +238,14 @@
                 
                 onRuntimeInitialized: function() {
                     console.log("[SnesPlayer] BOOT CONCLUÍDO COM SUCESSO! O motor Super Nintendo está rodando!");
+                    detectLibretroInputEngine(); // Detecta automaticamente a porta de controle C++!
+                    
+                    // Foco nativo no Canvas para receber os comandos
+                    const canvasEl = document.getElementById('game-canvas');
+                    if (canvasEl) {
+                        canvasEl.focus();
+                        canvasEl.addEventListener('click', () => canvasEl.focus());
+                    }
                 }
             };
 
