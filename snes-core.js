@@ -1,5 +1,5 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA para iOS Safari (Caminho B - ES6 Modular)
+ * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - 12 Botões Libretro)
  * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch Multi-Eixo
  */
 
@@ -60,9 +60,11 @@
     // =========================================================================
     // 2. SISTEMA DE CONTROLE TÁTIL CONTINUO (SLIDING D-PAD MULTI-TOUCH)
     // =========================================================================
+    // MAPEAMENTO OFICIAL RETROPAD LIBRETRO: B=0, Y=1, Select=2, Start=3, Up=4, Down=5, Left=6, Right=7, A=8, X=9, L=10, R=11
     const keyMap = {
         'UP': 4, 'DOWN': 5, 'LEFT': 6, 'RIGHT': 7,
-        'A': 0, 'B': 8, 'X': 1, 'Y': 9, 'L': 10, 'R': 11
+        'B': 0, 'Y': 1, 'SELECT': 2, 'START': 3,
+        'A': 8, 'X': 9, 'L': 10, 'R': 11
     };
 
     function setupTouchGamepad() {
@@ -154,7 +156,6 @@
 
             console.log("[SnesPlayer] ROM baixada com sucesso (" + (romBuffer.byteLength / 1024 / 1024).toFixed(2) + " MB). Configurando ponte Libretro ES6...");
 
-            // 1. A PONTE MÁGICA: Configuração global do Emscripten
             window.Module = {
                 canvas: config.canvas,
                 arguments: ['/rom.sfc'],
@@ -180,13 +181,10 @@
                 }
             };
 
-            // 2. INJEÇÃO ES6 MODULAR (Elimina o erro do import.meta):
             try {
                 console.log("[SnesPlayer] Importando módulo ES6 nativo do Snes9x...");
-                // A importação dinâmica avisa ao navegador que o arquivo PODE usar 'import.meta'
                 const coreModule = await import('./snes9x.js');
                 
-                // Se o compilador gerou uma função fábrica de módulo (Padrão Emscripten MODULARIZE=1)
                 if (coreModule && typeof coreModule.default === 'function') {
                     console.log("[SnesPlayer] Executando Factory Function do Emscripten...");
                     await coreModule.default(window.Module);
