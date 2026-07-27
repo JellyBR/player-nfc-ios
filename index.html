@@ -42,7 +42,7 @@
         .loader-text { color: #fff; font-size: 1.3rem; font-weight: bold; letter-spacing: 3px; animation: pulse 1.2s infinite; }
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; text-shadow: 0 0 15px #fff; } 100% { opacity: 0.2; } }
 
-        /* Estilo Unificado dos Botões de Sistema (START, SELECT, SAVE) */
+        /* Estilo Base dos Botões de Sistema */
         .btn-system {
             background: #282828; border: 1px solid #555; border-radius: 8px;
             color: #ccc; font-weight: bold; font-family: inherit;
@@ -103,10 +103,16 @@
         .btn-x { top: 0; left: 47px; background: #1976d2; }
         .btn-y { left: 0; top: 47px; background: #388e3c; }
 
+        .landscape-only { display: none !important; }
+        .portrait-only { display: flex !important; }
+
         /* =====================================================================
-           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (HUD Flutuante Integrado)
+           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (Posicionamento Exato do Desenho)
            ===================================================================== */
         @media (orientation: landscape) {
+            .portrait-only { display: none !important; }
+            .landscape-only { display: block !important; }
+
             #app-wrapper {
                 position: relative; width: 100vw; height: 100dvh;
                 display: block !important;
@@ -143,22 +149,24 @@
                 padding-bottom: 5px; pointer-events: none; display: flex !important;
             }
 
-            /* HUD ESQUERDO: Select e Save flutuando acima do D-Pad */
-            .landscape-left-hud {
-                position: absolute; bottom: 160px; left: 25px;
-                display: flex; flex-direction: column; gap: 8px; align-items: center;
+            /* SAVE e START posicionados na esquerda (abaixo do L) */
+            .landscape-left-cluster {
+                position: absolute; top: 58px; left: 25px;
+                display: flex !important; flex-direction: column; gap: 8px;
                 pointer-events: auto; z-index: 20;
+            }
+            .landscape-left-btn {
+                width: 90px; height: 36px; font-size: 0.75rem; font-weight: bold;
             }
 
-            /* HUD DIREITO: Start flutuando acima dos botões A/B/X/Y */
-            .landscape-right-hud {
-                position: absolute; bottom: 165px; right: 25px;
-                display: flex; flex-direction: column; gap: 8px; align-items: center;
+            /* SELECT posicionado na direita (acima dos botões X, Y, A, B) */
+            .landscape-right-cluster {
+                position: absolute; top: 58px; right: 25px;
+                display: flex !important; flex-direction: column; gap: 8px; align-items: flex-end;
                 pointer-events: auto; z-index: 20;
             }
-            
-            .landscape-btn {
-                width: 75px; height: 28px; font-size: 0.7rem;
+            .landscape-right-btn {
+                width: 90px; height: 36px; font-size: 0.75rem; font-weight: bold;
             }
         }
     </style>
@@ -179,10 +187,10 @@
         </div>
 
         <div id="gamepad">
-            <!-- Barra Superior (Vertical: L, Save, R) -->
+            <!-- Barra Superior -->
             <div class="shoulder-bar">
                 <div class="btn-shoulder" data-key="L">L</div>
-                <button class="btn-system btn-save" id="btn-export-save" style="width: 85px; height: 30px; font-size: 0.75rem;">💾 Save</button>
+                <button class="btn-system portrait-only" id="btn-export-save" style="width: 85px; height: 30px; font-size: 0.75rem; margin: 0;">💾 Save</button>
                 <div class="btn-shoulder" data-key="R">R</div>
             </div>
             
@@ -196,8 +204,8 @@
                     </div>
                 </div>
                 
-                <!-- Pílulas Centrais Exclusivas para a Vertical -->
-                <div class="center-cluster" style="display: flex;">
+                <!-- Pílulas Centrais (Apenas Retrato) -->
+                <div class="center-cluster portrait-only">
                     <div class="btn-system btn-pill" data-key="SELECT">SELECT</div>
                     <div class="btn-system btn-pill" data-key="START">START</div>
                 </div>
@@ -213,14 +221,14 @@
             </div>
         </div>
 
-        <!-- HUDs Flutuantes Exclusivos para a Horizontal (Paisagem) -->
-        <div class="landscape-left-hud" style="display: none;">
-            <button class="btn-system landscape-btn btn-save" id="btn-export-save-landscape">💾 Save</button>
-            <div class="btn-system landscape-btn" data-key="SELECT">SELECT</div>
+        <!-- Botões de Sistema Específicos para a Horizontal (Paisagem) nos locais exatos desenhados -->
+        <div class="landscape-only landscape-left-cluster">
+            <button class="btn-system landscape-left-btn btn-save" id="btn-export-save-landscape">💾 SAVE</button>
+            <div class="btn-system landscape-left-btn" data-key="START">START</div>
         </div>
 
-        <div class="landscape-right-hud" style="display: none;">
-            <div class="btn-system landscape-btn" data-key="START">START</div>
+        <div class="landscape-only landscape-right-cluster">
+            <div class="btn-system landscape-right-btn" data-key="SELECT">SELECT</div>
         </div>
     </div>
 
