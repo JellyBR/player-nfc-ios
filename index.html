@@ -42,82 +42,123 @@
         .loader-text { color: #fff; font-size: 1.3rem; font-weight: bold; letter-spacing: 3px; animation: pulse 1.2s infinite; }
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; text-shadow: 0 0 15px #fff; } 100% { opacity: 0.2; } }
 
-        /* === LAYOUT FLEXBOX DINÂMICO (Elimina o vazamento lateral/inferior) === */
+        #save-tools { position: absolute; top: 8px; right: 10px; z-index: 100; pointer-events: auto; }
+        .btn-save { background: #333; color: #aaa; border: 1px solid #555; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; }
+
+        /* =====================================================================
+           GEOMETRIA 1: MODO RETRATO / VERTICAL (Padrão - Tela Expandida 100vw)
+           ===================================================================== */
         #app-wrapper {
             width: 100vw; height: 100dvh;
             display: none; flex-direction: column;
             justify-content: space-between; align-items: center;
+            background: #000;
         }
 
         #game-container { 
-            width: 100%; flex: 1; display: flex; 
+            width: 100%; flex: 0 0 auto; display: flex; 
             justify-content: center; align-items: center; 
             background: #000; position: relative; z-index: 10;
-            min-height: 0; /* Permite que o flex adapte o Canvas sem estourar a tela */
+            padding-top: 5px;
         }
         #game-canvas {
-            display: block; max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3;
-            image-rendering: pixelated; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
-            outline: none;
+            display: block; width: 100vw; max-height: 44dvh; aspect-ratio: 4 / 3;
+            object-fit: contain; image-rendering: pixelated; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8); outline: none;
         }
 
-        /* === GAMEPAD ERGÔNOMICO PROTEGIDO === */
         #gamepad {
-            width: 100%; flex: 1.1; max-height: 380px;
+            width: 100%; flex: 1; max-height: 420px;
             background: #151515; border-top: 2px solid #222;
             display: flex; flex-direction: column;
             padding: 8px 15px 15px 15px; position: relative; z-index: 10;
-            box-sizing: border-box;
+            box-sizing: border-box; justify-content: space-between;
         }
         
-        /* Barra Superior: Ombros L e R */
-        .shoulder-bar {
-            width: 100%; display: flex; justify-content: space-between;
-            margin-bottom: 8px;
-        }
+        .shoulder-bar { width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px; }
         .btn-shoulder {
-            width: 85px; height: 32px; background: #282828; border: 2px solid #444;
-            border-radius: 6px; color: #fff; font-weight: bold; font-size: 0.9rem;
+            width: 90px; height: 34px; background: #282828; border: 2px solid #444;
+            border-radius: 8px; color: #fff; font-weight: bold; font-size: 0.95rem;
             display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 3px #111; cursor: pointer; transition: transform 0.05s;
+            box-shadow: 0 3px #111; cursor: pointer;
         }
 
-        /* Área Central (D-Pad, Pílulas, Ações) */
-        .main-controls {
-            width: 100%; flex: 1; display: flex;
-            justify-content: space-between; align-items: center;
-            padding: 0 5px;
-        }
+        .main-controls { width: 100%; flex: 1; display: flex; justify-content: space-between; align-items: center; padding: 0 5px; }
         
-        /* Direcional Ajustado para não cortar no iPhone */
         .pad-zone { display: flex; justify-content: center; align-items: center; }
-        .dpad { width: 120px; height: 120px; position: relative; background: #222; border-radius: 50%; }
-        .dpad-btn { position: absolute; width: 38px; height: 38px; background: #333; border-radius: 6px; cursor: pointer; }
-        .dpad-up { top: 4px; left: 41px; } .dpad-down { bottom: 4px; left: 41px; }
-        .dpad-left { top: 41px; left: 4px; } .dpad-right { top: 41px; right: 4px; }
+        .dpad { width: 130px; height: 130px; position: relative; background: #222; border-radius: 50%; }
+        .dpad-btn { position: absolute; width: 42px; height: 42px; background: #333; border-radius: 8px; cursor: pointer; }
+        .dpad-up { top: 4px; left: 44px; } .dpad-down { bottom: 4px; left: 44px; }
+        .dpad-left { top: 44px; left: 4px; } .dpad-right { top: 44px; right: 4px; }
         
-        /* Pílulas Centrais */
-        .center-cluster {
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; gap: 14px;
-        }
+        .center-cluster { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; }
         .btn-pill {
-            width: 60px; height: 22px; background: #282828; border: 1px solid #555;
-            border-radius: 12px; color: #ccc; font-size: 0.65rem; font-weight: bold;
+            width: 65px; height: 24px; background: #282828; border: 1px solid #555;
+            border-radius: 12px; color: #ccc; font-size: 0.68rem; font-weight: bold;
             display: flex; justify-content: center; align-items: center;
             letter-spacing: 1px; box-shadow: 0 2px #111; cursor: pointer;
         }
         
-        /* Ações de Rosto (A/B/X/Y) */
-        .action-cluster { width: 130px; height: 130px; position: relative; }
-        .btn-face { position: absolute; width: 44px; height: 44px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.1rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; cursor: pointer; }
-        .btn-a { right: 0; top: 43px; background: #d32f2f; }
-        .btn-b { bottom: 0; left: 43px; background: #fbc02d; color: #000; }
-        .btn-x { top: 0; left: 43px; background: #1976d2; }
-        .btn-y { left: 0; top: 43px; background: #388e3c; }
+        .action-cluster { width: 140px; height: 140px; position: relative; }
+        .btn-face { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.1rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; cursor: pointer; }
+        .btn-a { right: 0; top: 47px; background: #d32f2f; }
+        .btn-b { bottom: 0; left: 47px; background: #fbc02d; color: #000; }
+        .btn-x { top: 0; left: 47px; background: #1976d2; }
+        .btn-y { left: 0; top: 47px; background: #388e3c; }
 
-        #save-tools { position: absolute; top: 5px; right: 10px; z-index: 100; }
-        .btn-save { background: #333; color: #aaa; border: 1px solid #555; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; }
+        /* =====================================================================
+           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (O Golpe de Mestre - HUD Translucido)
+           ===================================================================== */
+        @media (orientation: landscape) {
+            #app-wrapper {
+                position: relative; width: 100vw; height: 100dvh;
+                display: block; /* Libera o fluxo para posicionamento absoluto */
+            }
+
+            /* A Tela do Jogo assume 100% da altura do celular, centralizada */
+            #game-container {
+                position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
+                padding: 0; z-index: 1; background: #000;
+            }
+            #game-canvas {
+                width: auto; height: 100dvh; max-width: 100vw; max-height: 100dvh;
+                box-shadow: none;
+            }
+
+            /* O Controle transforma-se em um HUD transparente flutuando na tela */
+            #gamepad {
+                position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
+                background: transparent; border: none; z-index: 10;
+                padding: 15px 40px; max-height: none;
+                pointer-events: none; /* Permite que cliques na área vazia passem para o jogo */
+            }
+
+            /* Reativa os cliques exclusivamente em cima dos botões */
+            .dpad, .btn-face, .btn-shoulder, .btn-pill, #save-tools {
+                pointer-events: auto; opacity: 0.85; /* Leve transparência imersiva */
+            }
+
+            /* Posicionamento Tático dos Ombros na horizontal */
+            .shoulder-bar {
+                position: absolute; top: 15px; left: 40px; width: calc(100vw - 80px);
+                margin: 0; pointer-events: none;
+            }
+            .btn-shoulder { pointer-events: auto; width: 100px; height: 38px; }
+
+            /* Posicionamento do D-Pad na esquerda e Botões na direita, alinhados à base */
+            .main-controls {
+                width: 100%; height: 100%; align-items: flex-end;
+                padding-bottom: 10px; pointer-events: none;
+            }
+
+            /* Move START e SELECT para o centro superior da tela (fora do caminho do Mario!) */
+            .center-cluster {
+                position: absolute; top: 20px; left: 50%;
+                transform: translateX(-50%);
+                flex-direction: row; gap: 30px; pointer-events: none;
+            }
+            .btn-pill { pointer-events: auto; width: 80px; height: 28px; font-size: 0.75rem; }
+        }
     </style>
 </head>
 <body>
@@ -130,7 +171,6 @@
         <div class="loader-text">INJETANDO MOTOR SNES...</div>
     </div>
 
-    <!-- Novo Container Pai Adaptativo -->
     <div id="app-wrapper">
         <div id="game-container">
             <div id="save-tools"><button class="btn-save" id="btn-export-save">💾 Exportar Save (.sav)</button></div>
@@ -196,7 +236,6 @@
                     const romUrl = `roms/${sys}/${dataId}`;
                     const coreUrl = `snes9x.wasm`;
 
-                    // Exibe o wrapper principal com Flexbox
                     appWrapper.style.display = 'flex';
 
                     await window.SnesPlayer.init({
