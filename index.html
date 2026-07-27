@@ -42,11 +42,11 @@
         .loader-text { color: #fff; font-size: 1.3rem; font-weight: bold; letter-spacing: 3px; animation: pulse 1.2s infinite; }
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; text-shadow: 0 0 15px #fff; } 100% { opacity: 0.2; } }
 
-        #save-tools { position: absolute; top: 8px; right: 10px; z-index: 100; pointer-events: auto; }
-        .btn-save { background: #333; color: #aaa; border: 1px solid #555; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; }
+        /* Estilo Base do Botão de Save */
+        .btn-save { background: #282828; color: #aaa; border: 1px solid #555; padding: 5px 10px; font-size: 0.7rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: bold; }
 
         /* =====================================================================
-           GEOMETRIA 1: MODO RETRATO / VERTICAL (Padrão - Tela Expandida 100vw)
+           GEOMETRIA 1: MODO RETRATO / VERTICAL
            ===================================================================== */
         #app-wrapper {
             width: 100vw; height: 100dvh;
@@ -75,9 +75,9 @@
             box-sizing: border-box; justify-content: space-between;
         }
         
-        .shoulder-bar { width: 100%; display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .shoulder-bar { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .btn-shoulder {
-            width: 90px; height: 34px; background: #282828; border: 2px solid #444;
+            width: 85px; height: 34px; background: #282828; border: 2px solid #444;
             border-radius: 8px; color: #fff; font-weight: bold; font-size: 0.95rem;
             display: flex; justify-content: center; align-items: center;
             box-shadow: 0 3px #111; cursor: pointer;
@@ -106,16 +106,22 @@
         .btn-x { top: 0; left: 47px; background: #1976d2; }
         .btn-y { left: 0; top: 47px; background: #388e3c; }
 
+        /* Oculta elementos exclusivos da horizontal no modo vertical */
+        .landscape-only { display: none !important; }
+        .portrait-only { display: flex !important; }
+
         /* =====================================================================
-           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (O Golpe de Mestre - HUD Translucido)
+           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (HUD Flutuante Otimizado)
            ===================================================================== */
         @media (orientation: landscape) {
+            .portrait-only { display: none !important; }
+            .landscape-only { display: flex !important; }
+
             #app-wrapper {
                 position: relative; width: 100vw; height: 100dvh;
-                display: block; /* Libera o fluxo para posicionamento absoluto */
+                display: block;
             }
 
-            /* A Tela do Jogo assume 100% da altura do celular, centralizada */
             #game-container {
                 position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
                 padding: 0; z-index: 1; background: #000;
@@ -125,39 +131,49 @@
                 box-shadow: none;
             }
 
-            /* O Controle transforma-se em um HUD transparente flutuando na tela */
             #gamepad {
                 position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
                 background: transparent; border: none; z-index: 10;
-                padding: 15px 40px; max-height: none;
-                pointer-events: none; /* Permite que cliques na área vazia passem para o jogo */
+                padding: 10px 30px; max-height: none;
+                pointer-events: none;
             }
 
-            /* Reativa os cliques exclusivamente em cima dos botões */
-            .dpad, .btn-face, .btn-shoulder, .btn-pill, #save-tools {
-                pointer-events: auto; opacity: 0.85; /* Leve transparência imersiva */
+            .dpad, .btn-face, .btn-shoulder, .btn-pill, .btn-save {
+                pointer-events: auto; opacity: 0.88;
             }
 
-            /* Posicionamento Tático dos Ombros na horizontal */
+            /* Ombros L e R nas extremidades superiores */
             .shoulder-bar {
-                position: absolute; top: 15px; left: 40px; width: calc(100vw - 80px);
-                margin: 0; pointer-events: none;
+                position: absolute; top: 12px; left: 30px; width: calc(100vw - 60px);
+                margin: 0; pointer-events: none; justify-content: space-between;
             }
-            .btn-shoulder { pointer-events: auto; width: 100px; height: 38px; }
+            .btn-shoulder { pointer-events: auto; width: 90px; height: 35px; }
 
-            /* Posicionamento do D-Pad na esquerda e Botões na direita, alinhados à base */
             .main-controls {
                 width: 100%; height: 100%; align-items: flex-end;
-                padding-bottom: 10px; pointer-events: none;
+                padding-bottom: 5px; pointer-events: none;
             }
 
-            /* Move START e SELECT para o centro superior da tela (fora do caminho do Mario!) */
-            .center-cluster {
-                position: absolute; top: 20px; left: 50%;
-                transform: translateX(-50%);
-                flex-direction: row; gap: 30px; pointer-events: none;
+            /* HUD ESQUERDO: Select e Save acima do D-Pad */
+            .left-hud-group {
+                position: absolute; bottom: 155px; left: 45px;
+                display: flex; flex-direction: column; gap: 8px; align-items: center;
+                pointer-events: auto;
             }
-            .btn-pill { pointer-events: auto; width: 80px; height: 28px; font-size: 0.75rem; }
+
+            /* HUD DIREITO: Start acima dos botões A/B/X/Y */
+            .right-hud-group {
+                position: absolute; bottom: 160px; right: 45px;
+                display: flex; flex-direction: column; gap: 8px; align-items: center;
+                pointer-events: auto;
+            }
+            
+            .landscape-pill {
+                width: 75px; height: 26px; background: #282828; border: 1px solid #555;
+                border-radius: 12px; color: #ccc; font-size: 0.7rem; font-weight: bold;
+                display: flex; justify-content: center; align-items: center;
+                letter-spacing: 1px; box-shadow: 0 2px #111; cursor: pointer;
+            }
         }
     </style>
 </head>
@@ -173,13 +189,18 @@
 
     <div id="app-wrapper">
         <div id="game-container">
-            <div id="save-tools"><button class="btn-save" id="btn-export-save">💾 Exportar Save (.sav)</button></div>
+            <!-- Botão de Save na Vertical (Entre L e R) -->
+            <div id="save-tools" class="portrait-only" style="position:static;"></div>
             <canvas id="game-canvas" tabindex="-1"></canvas>
         </div>
 
         <div id="gamepad">
+            <!-- Barra Superior (Vertical: L, Save, R) -->
             <div class="shoulder-bar">
                 <div class="btn-shoulder" data-key="L">L</div>
+                <div class="portrait-only" style="margin: 0;">
+                    <button class="btn-save" id="btn-export-save">💾 Save (.sav)</button>
+                </div>
                 <div class="btn-shoulder" data-key="R">R</div>
             </div>
             
@@ -193,7 +214,8 @@
                     </div>
                 </div>
                 
-                <div class="center-cluster">
+                <!-- Pílulas centrais usadas apenas na Vertical -->
+                <div class="center-cluster portrait-only">
                     <div class="btn-pill" data-key="SELECT">SELECT</div>
                     <div class="btn-pill" data-key="START">START</div>
                 </div>
@@ -207,6 +229,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- HUDs Flutuantes Exclusivos para a Horizontal (Paisagem) -->
+        <div class="landscape-only left-hud-group">
+            <button class="btn-save" id="btn-export-save-landscape">💾 Save</button>
+            <div class="landscape-pill" data-key="SELECT">SELECT</div>
+        </div>
+
+        <div class="landscape-only right-hud-group">
+            <div class="landscape-pill" data-key="START">START</div>
         </div>
     </div>
 
@@ -261,6 +293,17 @@
             document.querySelector('.cart-status').style.color = "#ff0000";
             powerBtn.style.display = "none";
         }
+
+        // Sincroniza o botão de exportar save da horizontal com o script principal do core
+        document.addEventListener('DOMContentLoaded', () => {
+            const saveBtnLandscape = document.getElementById('btn-export-save-landscape');
+            if (saveBtnLandscape) {
+                saveBtnLandscape.addEventListener('click', () => {
+                    const originalSaveBtn = document.getElementById('btn-export-save');
+                    if (originalSaveBtn) originalSaveBtn.click();
+                });
+            }
+        });
     </script>
 </body>
 </html>
