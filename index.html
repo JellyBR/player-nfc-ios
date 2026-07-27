@@ -52,32 +52,64 @@
             display: none; justify-content: center; align-items: center; 
             background: #000; position: relative; z-index: 10;
         }
-        /* CORREÇÃO DO ERRO VERMELHO DA LIBRETRO: display: block ! */
         #game-canvas {
             display: block; width: 100%; height: 100%;
             max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3;
             image-rendering: pixelated; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
         }
 
+        /* === GAMEPAD ERGÔNOMICO COMPLETO (SNES / GBA) === */
         #gamepad {
             width: 100%; height: var(--gamepad-height);
             background: #151515; border-top: 2px solid #222;
-            display: none; grid-template-columns: 1fr 1fr;
-            padding: 15px; position: relative; z-index: 10;
+            display: none; flex-direction: column;
+            padding: 10px 15px; position: relative; z-index: 10;
         }
-        .pad-zone { display: flex; justify-content: center; align-items: center; position: relative; }
         
-        .dpad { width: 140px; height: 140px; position: relative; background: #222; border-radius: 50%; }
-        .dpad-btn { position: absolute; width: 45px; height: 45px; background: #333; border-radius: 8px; }
-        .dpad-up { top: 5px; left: 47.5px; } .dpad-down { bottom: 5px; left: 47.5px; }
-        .dpad-left { top: 47.5px; left: 5px; } .dpad-right { top: 47.5px; right: 5px; }
+        /* Barra Superior: Botões de Ombro (L e R) */
+        .shoulder-bar {
+            width: 100%; display: flex; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .btn-shoulder {
+            width: 90px; height: 35px; background: #333; border: 2px solid #444;
+            border-radius: 8px; color: #fff; font-weight: bold; font-size: 1rem;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px #111;
+        }
+
+        /* Área Principal do Controle (D-Pad, Center, A/B/X/Y) */
+        .main-controls {
+            width: 100%; flex: 1; display: flex;
+            justify-content: space-between; align-items: center;
+        }
         
-        .action-cluster { width: 150px; height: 150px; position: relative; }
-        .btn-face { position: absolute; width: 50px; height: 50px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.2rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; }
-        .btn-a { right: 0; top: 50px; background: #d32f2f; }
-        .btn-b { bottom: 0; left: 50px; background: #fbc02d; color: #000; }
-        .btn-x { top: 0; left: 50px; background: #1976d2; }
-        .btn-y { left: 0; top: 50px; background: #388e3c; }
+        /* Direcional (Esquerda) */
+        .pad-zone { display: flex; justify-content: center; align-items: center; }
+        .dpad { width: 130px; height: 130px; position: relative; background: #222; border-radius: 50%; }
+        .dpad-btn { position: absolute; width: 42px; height: 42px; background: #333; border-radius: 6px; }
+        .dpad-up { top: 4px; left: 44px; } .dpad-down { bottom: 4px; left: 44px; }
+        .dpad-left { top: 44px; left: 4px; } .dpad-right { top: 44px; right: 4px; }
+        
+        /* Pílulas Centrais (Select e Start) */
+        .center-cluster {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; gap: 15px;
+        }
+        .btn-pill {
+            width: 65px; height: 22px; background: #333; border: 1px solid #555;
+            border-radius: 12px; color: #ccc; font-size: 0.65rem; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            letter-spacing: 1px; box-shadow: 0 2px #111;
+        }
+        
+        /* Ações de Rosto (Direita) */
+        .action-cluster { width: 140px; height: 140px; position: relative; }
+        .btn-face { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.1rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; }
+        .btn-a { right: 0; top: 47px; background: #d32f2f; }
+        .btn-b { bottom: 0; left: 47px; background: #fbc02d; color: #000; }
+        .btn-x { top: 0; left: 47px; background: #1976d2; }
+        .btn-y { left: 0; top: 47px; background: #388e3c; }
 
         #save-tools { position: absolute; top: 5px; right: 10px; z-index: 100; }
         .btn-save { background: #333; color: #aaa; border: 1px solid #555; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; }
@@ -98,21 +130,37 @@
         <canvas id="game-canvas"></canvas>
     </div>
 
+    <!-- Novo Gamepad Completo de 12 Botões -->
     <div id="gamepad">
-        <div class="pad-zone">
-            <div class="dpad">
-                <div class="dpad-btn dpad-up" data-key="UP"></div>
-                <div class="dpad-btn dpad-down" data-key="DOWN"></div>
-                <div class="dpad-btn dpad-left" data-key="LEFT"></div>
-                <div class="dpad-btn dpad-right" data-key="RIGHT"></div>
-            </div>
+        <!-- Barra de Ombros -->
+        <div class="shoulder-bar">
+            <div class="btn-shoulder" data-key="L">L</div>
+            <div class="btn-shoulder" data-key="R">R</div>
         </div>
-        <div class="pad-zone">
-            <div class="action-cluster">
-                <div class="btn-face btn-x" data-key="X">X</div>
-                <div class="btn-face btn-y" data-key="Y">Y</div>
-                <div class="btn-face btn-a" data-key="A">A</div>
-                <div class="btn-face btn-b" data-key="B">B</div>
+        
+        <!-- Controles Principais -->
+        <div class="main-controls">
+            <div class="pad-zone">
+                <div class="dpad">
+                    <div class="dpad-btn dpad-up" data-key="UP"></div>
+                    <div class="dpad-btn dpad-down" data-key="DOWN"></div>
+                    <div class="dpad-btn dpad-left" data-key="LEFT"></div>
+                    <div class="dpad-btn dpad-right" data-key="RIGHT"></div>
+                </div>
+            </div>
+            
+            <div class="center-cluster">
+                <div class="btn-pill" data-key="SELECT">SELECT</div>
+                <div class="btn-pill" data-key="START">START</div>
+            </div>
+
+            <div class="pad-zone">
+                <div class="action-cluster">
+                    <div class="btn-face btn-x" data-key="X">X</div>
+                    <div class="btn-face btn-y" data-key="Y">Y</div>
+                    <div class="btn-face btn-a" data-key="A">A</div>
+                    <div class="btn-face btn-b" data-key="B">B</div>
+                </div>
             </div>
         </div>
     </div>
@@ -133,7 +181,6 @@
         if (sys === 'snes' && dataId) {
             powerBtn.addEventListener('click', async function() {
                 
-                // 1. Esconde a tela de Power On e exibe o Overlay de Loading (por cima de tudo via z-index)
                 powerScreen.style.display = 'none';
                 loadingOverlay.style.display = 'flex';
 
@@ -145,12 +192,9 @@
                     const romUrl = `roms/${sys}/${dataId}`;
                     const coreUrl = `snes9x.wasm`;
 
-                    // 2. INVERSÃO LÓGICA DE OURO: Liberamos o display da tela e do controle ANTES do boot!
-                    // Assim, quando o Emscripten perguntar o tamanho do Canvas, ele não lerá mais "0 x 0"!
                     gameContainer.style.display = 'flex';
-                    gamepad.style.display = 'grid';
+                    gamepad.style.display = 'flex'; // Agora usa flexbox estruturado!
 
-                    // 3. Aciona o motor sênior ES6
                     await window.SnesPlayer.init({
                         canvas: document.getElementById('game-canvas'),
                         audioContext: audioCtx,
@@ -159,7 +203,6 @@
                         cartId: dataId
                     });
 
-                    // 4. Somente após o boot ser concluído, removemos a cortina preta de carregamento!
                     loadingOverlay.style.display = 'none';
                     setTimeout(() => { window.scrollTo(0, 1); }, 100);
 
