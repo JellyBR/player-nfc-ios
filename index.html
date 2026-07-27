@@ -12,11 +12,6 @@
     <title>Sistema de Execução - Cartucho NFC</title>
     
     <style>
-        :root {
-            --canvas-height: 45dvh;
-            --gamepad-height: calc(100dvh - var(--canvas-height));
-        }
-
         body, html { 
             margin: 0; padding: 0; width: 100vw; height: 100dvh; 
             background-color: #050505; overflow: hidden; 
@@ -47,69 +42,79 @@
         .loader-text { color: #fff; font-size: 1.3rem; font-weight: bold; letter-spacing: 3px; animation: pulse 1.2s infinite; }
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; text-shadow: 0 0 15px #fff; } 100% { opacity: 0.2; } }
 
+        /* === LAYOUT FLEXBOX DINÂMICO (Elimina o vazamento lateral/inferior) === */
+        #app-wrapper {
+            width: 100vw; height: 100dvh;
+            display: none; flex-direction: column;
+            justify-content: space-between; align-items: center;
+        }
+
         #game-container { 
-            width: 100%; height: var(--canvas-height); 
-            display: none; justify-content: center; align-items: center; 
+            width: 100%; flex: 1; display: flex; 
+            justify-content: center; align-items: center; 
             background: #000; position: relative; z-index: 10;
+            min-height: 0; /* Permite que o flex adapte o Canvas sem estourar a tela */
         }
         #game-canvas {
-            display: block; width: 100%; height: 100%;
-            max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3;
+            display: block; max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3;
             image-rendering: pixelated; box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+            outline: none;
         }
 
-        /* === GAMEPAD ERGÔNOMICO COMPLETO (SNES / GBA) === */
+        /* === GAMEPAD ERGÔNOMICO PROTEGIDO === */
         #gamepad {
-            width: 100%; height: var(--gamepad-height);
+            width: 100%; flex: 1.1; max-height: 380px;
             background: #151515; border-top: 2px solid #222;
-            display: none; flex-direction: column;
-            padding: 10px 15px; position: relative; z-index: 10;
+            display: flex; flex-direction: column;
+            padding: 8px 15px 15px 15px; position: relative; z-index: 10;
+            box-sizing: border-box;
         }
         
-        /* Barra Superior: Botões de Ombro (L e R) */
+        /* Barra Superior: Ombros L e R */
         .shoulder-bar {
             width: 100%; display: flex; justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .btn-shoulder {
-            width: 90px; height: 35px; background: #333; border: 2px solid #444;
-            border-radius: 8px; color: #fff; font-weight: bold; font-size: 1rem;
+            width: 85px; height: 32px; background: #282828; border: 2px solid #444;
+            border-radius: 6px; color: #fff; font-weight: bold; font-size: 0.9rem;
             display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 4px #111;
+            box-shadow: 0 3px #111; cursor: pointer; transition: transform 0.05s;
         }
 
-        /* Área Principal do Controle (D-Pad, Center, A/B/X/Y) */
+        /* Área Central (D-Pad, Pílulas, Ações) */
         .main-controls {
             width: 100%; flex: 1; display: flex;
             justify-content: space-between; align-items: center;
+            padding: 0 5px;
         }
         
-        /* Direcional (Esquerda) */
+        /* Direcional Ajustado para não cortar no iPhone */
         .pad-zone { display: flex; justify-content: center; align-items: center; }
-        .dpad { width: 130px; height: 130px; position: relative; background: #222; border-radius: 50%; }
-        .dpad-btn { position: absolute; width: 42px; height: 42px; background: #333; border-radius: 6px; }
-        .dpad-up { top: 4px; left: 44px; } .dpad-down { bottom: 4px; left: 44px; }
-        .dpad-left { top: 44px; left: 4px; } .dpad-right { top: 44px; right: 4px; }
+        .dpad { width: 120px; height: 120px; position: relative; background: #222; border-radius: 50%; }
+        .dpad-btn { position: absolute; width: 38px; height: 38px; background: #333; border-radius: 6px; cursor: pointer; }
+        .dpad-up { top: 4px; left: 41px; } .dpad-down { bottom: 4px; left: 41px; }
+        .dpad-left { top: 41px; left: 4px; } .dpad-right { top: 41px; right: 4px; }
         
-        /* Pílulas Centrais (Select e Start) */
+        /* Pílulas Centrais */
         .center-cluster {
             display: flex; flex-direction: column; justify-content: center;
-            align-items: center; gap: 15px;
+            align-items: center; gap: 14px;
         }
         .btn-pill {
-            width: 65px; height: 22px; background: #333; border: 1px solid #555;
+            width: 60px; height: 22px; background: #282828; border: 1px solid #555;
             border-radius: 12px; color: #ccc; font-size: 0.65rem; font-weight: bold;
             display: flex; justify-content: center; align-items: center;
-            letter-spacing: 1px; box-shadow: 0 2px #111;
+            letter-spacing: 1px; box-shadow: 0 2px #111; cursor: pointer;
         }
         
-        /* Ações de Rosto (Direita) */
-        .action-cluster { width: 140px; height: 140px; position: relative; }
-        .btn-face { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.1rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; }
-        .btn-a { right: 0; top: 47px; background: #d32f2f; }
-        .btn-b { bottom: 0; left: 47px; background: #fbc02d; color: #000; }
-        .btn-x { top: 0; left: 47px; background: #1976d2; }
-        .btn-y { left: 0; top: 47px; background: #388e3c; }
+        /* Ações de Rosto (A/B/X/Y) */
+        .action-cluster { width: 130px; height: 130px; position: relative; }
+        .btn-face { position: absolute; width: 44px; height: 44px; border-radius: 50%; border: none; font-weight: bold; font-size: 1.1rem; color: #fff; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px #111; cursor: pointer; }
+        .btn-a { right: 0; top: 43px; background: #d32f2f; }
+        .btn-b { bottom: 0; left: 43px; background: #fbc02d; color: #000; }
+        .btn-x { top: 0; left: 43px; background: #1976d2; }
+        .btn-y { left: 0; top: 43px; background: #388e3c; }
 
         #save-tools { position: absolute; top: 5px; right: 10px; z-index: 100; }
         .btn-save { background: #333; color: #aaa; border: 1px solid #555; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; }
@@ -125,41 +130,41 @@
         <div class="loader-text">INJETANDO MOTOR SNES...</div>
     </div>
 
-    <div id="game-container">
-        <div id="save-tools"><button class="btn-save" id="btn-export-save">💾 Exportar Save (.sav)</button></div>
-        <canvas id="game-canvas"></canvas>
-    </div>
-
-    <!-- Novo Gamepad Completo de 12 Botões -->
-    <div id="gamepad">
-        <!-- Barra de Ombros -->
-        <div class="shoulder-bar">
-            <div class="btn-shoulder" data-key="L">L</div>
-            <div class="btn-shoulder" data-key="R">R</div>
+    <!-- Novo Container Pai Adaptativo -->
+    <div id="app-wrapper">
+        <div id="game-container">
+            <div id="save-tools"><button class="btn-save" id="btn-export-save">💾 Exportar Save (.sav)</button></div>
+            <canvas id="game-canvas" tabindex="-1"></canvas>
         </div>
-        
-        <!-- Controles Principais -->
-        <div class="main-controls">
-            <div class="pad-zone">
-                <div class="dpad">
-                    <div class="dpad-btn dpad-up" data-key="UP"></div>
-                    <div class="dpad-btn dpad-down" data-key="DOWN"></div>
-                    <div class="dpad-btn dpad-left" data-key="LEFT"></div>
-                    <div class="dpad-btn dpad-right" data-key="RIGHT"></div>
-                </div>
+
+        <div id="gamepad">
+            <div class="shoulder-bar">
+                <div class="btn-shoulder" data-key="L">L</div>
+                <div class="btn-shoulder" data-key="R">R</div>
             </div>
             
-            <div class="center-cluster">
-                <div class="btn-pill" data-key="SELECT">SELECT</div>
-                <div class="btn-pill" data-key="START">START</div>
-            </div>
+            <div class="main-controls">
+                <div class="pad-zone">
+                    <div class="dpad">
+                        <div class="dpad-btn dpad-up" data-key="UP"></div>
+                        <div class="dpad-btn dpad-down" data-key="DOWN"></div>
+                        <div class="dpad-btn dpad-left" data-key="LEFT"></div>
+                        <div class="dpad-btn dpad-right" data-key="RIGHT"></div>
+                    </div>
+                </div>
+                
+                <div class="center-cluster">
+                    <div class="btn-pill" data-key="SELECT">SELECT</div>
+                    <div class="btn-pill" data-key="START">START</div>
+                </div>
 
-            <div class="pad-zone">
-                <div class="action-cluster">
-                    <div class="btn-face btn-x" data-key="X">X</div>
-                    <div class="btn-face btn-y" data-key="Y">Y</div>
-                    <div class="btn-face btn-a" data-key="A">A</div>
-                    <div class="btn-face btn-b" data-key="B">B</div>
+                <div class="pad-zone">
+                    <div class="action-cluster">
+                        <div class="btn-face btn-x" data-key="X">X</div>
+                        <div class="btn-face btn-y" data-key="Y">Y</div>
+                        <div class="btn-face btn-a" data-key="A">A</div>
+                        <div class="btn-face btn-b" data-key="B">B</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -175,8 +180,7 @@
         const powerBtn = document.getElementById('power-btn');
         const powerScreen = document.getElementById('power-screen');
         const loadingOverlay = document.getElementById('loading-overlay');
-        const gameContainer = document.getElementById('game-container');
-        const gamepad = document.getElementById('gamepad');
+        const appWrapper = document.getElementById('app-wrapper');
 
         if (sys === 'snes' && dataId) {
             powerBtn.addEventListener('click', async function() {
@@ -192,8 +196,8 @@
                     const romUrl = `roms/${sys}/${dataId}`;
                     const coreUrl = `snes9x.wasm`;
 
-                    gameContainer.style.display = 'flex';
-                    gamepad.style.display = 'flex'; // Agora usa flexbox estruturado!
+                    // Exibe o wrapper principal com Flexbox
+                    appWrapper.style.display = 'flex';
 
                     await window.SnesPlayer.init({
                         canvas: document.getElementById('game-canvas'),
