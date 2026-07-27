@@ -1,0 +1,9 @@
+{
+  "name": "Sistema de Execução - Cartucho NFC",
+  "short_name": "SNES Card",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "any"
+}
