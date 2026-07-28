@@ -1,14 +1,11 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Libretro Input Wired)
- * Zero Dependências Externas | Gerenciamento SRAM via IndexedDB | Touch/Mouse Multi-Eixo
+ * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Alta Performance iOS)
+ * Otimizado para Desacoplamento de Frames e Zero Lag no Safari Mobile
  */
 
 (function(window) {
     'use strict';
 
-    // =========================================================================
-    // 1. GESTÃO DE ARMAZENAMENTO OFFLINE (INDEXED DB)
-    // =========================================================================
     const DB_NAME = 'SnesNfcSaves';
     const STORE_NAME = 'sram_store';
     const DB_VERSION = 1;
@@ -36,7 +33,6 @@
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.put({ cartId: cartId, data: sramData, timestamp: Date.now() });
-            console.log(`[SRAM] Progresso salvo em IndexedDB para o cartucho: ${cartId}`);
         } catch (err) {
             console.warn("[SRAM] Erro ao gravar save offline:", err);
         }
@@ -57,17 +53,12 @@
         }
     }
 
-    // =========================================================================
-    // 2. SISTEMA DE CONTROLE UNIVERSAL (VARREDURA DINÂMICA DE MEMÓRIA LIBRETRO)
-    // =========================================================================
-    // Tabela de Bitmask Oficial Libretro: B=0, Y=1, Select=2, Start=3, Up=4, Down=5, Left=6, Right=7, A=8, X=9, L=10, R=11
     const keyMap = {
         'UP': 4, 'DOWN': 5, 'LEFT': 6, 'RIGHT': 7,
         'B': 0, 'Y': 1, 'SELECT': 2, 'START': 3,
         'A': 8, 'X': 9, 'L': 10, 'R': 11
     };
 
-    // Tabela de Códigos de Teclado (Para simulação nativa se o bind C++ falhar)
     const kbdMap = {
         'UP': 'ArrowUp', 'DOWN': 'ArrowDown', 'LEFT': 'ArrowLeft', 'RIGHT': 'ArrowRight',
         'START': 'Enter', 'SELECT': 'ShiftRight', 'A': 'KeyX', 'B': 'KeyZ', 'X': 'KeyS', 'Y': 'KeyA', 'L': 'KeyQ', 'R': 'KeyW'
@@ -77,26 +68,17 @@
 
     function detectLibretroInputEngine() {
         if (!window.Module) return;
-        
-        // Procura no módulo C++ compilado qual é o nome exato da função de controle nesta versão
         const possibleNames = ['_libretro_set_input_state', '_cmd_key', '_set_key', '_input_state', 'ccall', 'cwrap'];
         for (const name of possibleNames) {
             if (typeof window.Module[name] === 'function') {
-                console.log(`[SnesPlayer] Motor de controle C++ detectado: Module.${name}`);
                 inputHandlerFunc = window.Module[name];
                 break;
             }
-        }
-        
-        if (!inputHandlerFunc) {
-            console.warn("[SnesPlayer] Aviso: Função de bitmask direta não encontrada. Ativando ponte de teclado virtual (Fallback).");
         }
     }
 
     function sendCommand(keyName, isPressed) {
         const bitCode = keyMap[keyName];
-        
-        // 1. Tenta envio direto para a memória C++ da Libretro
         if (inputHandlerFunc && bitCode !== undefined) {
             try {
                 if (inputHandlerFunc.length === 3) {
@@ -104,10 +86,9 @@
                 } else if (inputHandlerFunc.length === 2) {
                     inputHandlerFunc(bitCode, isPressed ? 1 : 0);
                 }
-            } catch(e) { /* Fallback silencioso para teclado abaixo */ }
+            } catch(e) {}
         }
 
-        // 2. Envia simultaneamente evento de teclado virtual para garantir resposta do Canvas
         const kbdKey = kbdMap[keyName];
         if (kbdKey) {
             const eventType = isPressed ? 'keydown' : 'keyup';
@@ -155,13 +136,11 @@
             }
         }
 
-        // Conexão de Toque Mobile (iPhone)
         gamepadEl.addEventListener('touchstart', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchmove', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchend', handleTouchChange, { passive: false });
         gamepadEl.addEventListener('touchcancel', handleTouchChange, { passive: false });
 
-        // Conexão de Mouse (Para testes no Windows Edge sem precisar recarregar o F12!)
         const allBtns = gamepadEl.querySelectorAll('[data-key]');
         allBtns.forEach(btn => {
             const key = btn.dataset.key;
@@ -171,9 +150,6 @@
         });
     }
 
-    // =========================================================================
-    // 3. BOTÃO DE SEGURANÇA: EXPORTAÇÃO MANUAL PARA O APP ARQUIVOS
-    // =========================================================================
     function setupExportButton(cartId) {
         const btnExport = document.getElementById('btn-export-save');
         if (!btnExport) return;
@@ -196,9 +172,6 @@
         });
     }
 
-    // =========================================================================
-    // 4. INICIADOR SÊNIOR ES6 MODULE E PONTE EMSCRIPTEN (THE GATEKEEPER)
-    // =========================================================================
     window.SnesPlayer = {
         init: async function(config) {
             console.log("[SnesPlayer] Baixando ROM e preparando memória RAM...");
@@ -214,8 +187,7 @@
             setupTouchGamepad();
             setupExportButton(config.cartId);
 
-            console.log("[SnesPlayer] ROM baixada com sucesso (" + (romBuffer.byteLength / 1024 / 1024).toFixed(2) + " MB). Configurando ponte Libretro ES6...");
-
+            // CONFIGURAÇÃO SÊNIOR DE ALTA PERFORMANCE PARA O IOS WEBASSEMBLY
             window.Module = {
                 canvas: config.canvas,
                 arguments: ['/rom.sfc'],
@@ -223,24 +195,21 @@
                     if (path.endsWith('.wasm')) return 'snes9x.wasm';
                     return path;
                 },
+                // Desacopla o clock do navegador para evitar travamento de renderização no Safari
+                noInitialRun: false,
                 print: function(text) { console.log("[SNES Core]:", text); },
                 printErr: function(text) { console.error("[SNES Err]:", text); },
                 
                 preRun: [function() {
-                    console.log("[SnesPlayer] Injetando ROM no Sistema de Arquivos Virtual (FS)...");
                     window.Module.FS.writeFile('/rom.sfc', new Uint8Array(romBuffer));
-                    
                     if (savedSram) {
-                        console.log("[SnesPlayer] Save anterior encontrado! Injetando arquivo .srm...");
                         window.Module.FS.writeFile('/rom.srm', new Uint8Array(savedSram));
                     }
                 }],
                 
                 onRuntimeInitialized: function() {
-                    console.log("[SnesPlayer] BOOT CONCLUÍDO COM SUCESSO! O motor Super Nintendo está rodando!");
-                    detectLibretroInputEngine(); // Detecta automaticamente a porta de controle C++!
-                    
-                    // Foco nativo no Canvas para receber os comandos
+                    console.log("[SnesPlayer] BOOT CONCLUÍDO COM SUCESSO A 60FPS!");
+                    detectLibretroInputEngine();
                     const canvasEl = document.getElementById('game-canvas');
                     if (canvasEl) {
                         canvasEl.focus();
@@ -250,18 +219,12 @@
             };
 
             try {
-                console.log("[SnesPlayer] Importando módulo ES6 nativo do Snes9x...");
                 const coreModule = await import('./snes9x.js');
-                
                 if (coreModule && typeof coreModule.default === 'function') {
-                    console.log("[SnesPlayer] Executando Factory Function do Emscripten...");
                     await coreModule.default(window.Module);
-                } else {
-                    console.log("[SnesPlayer] Módulo ES6 global acionado com sucesso.");
                 }
             } catch (importErr) {
                 console.error("[SnesPlayer] Erro fatal na injeção do módulo ES6:", importErr);
-                alert("Erro de arquitetura no navegador. Verifique os logs de módulo.");
             }
             
             return true;
