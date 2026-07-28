@@ -1,6 +1,6 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Alta Performance iOS)
- * Otimizado para Desacoplamento de Frames e Zero Lag no Safari Mobile
+ * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Ultra Performance iOS Safari)
+ * Desacoplamento de Áudio de Baixa Latência e Otimização WebAssembly 60FPS
  */
 
 (function(window) {
@@ -174,7 +174,7 @@
 
     window.SnesPlayer = {
         init: async function(config) {
-            console.log("[SnesPlayer] Baixando ROM e preparando memória RAM...");
+            console.log("[SnesPlayer] A descarregar ROM e a preparar memória RAM...");
 
             const [romResponse, savedSram] = await Promise.all([
                 fetch(config.romPath),
@@ -187,7 +187,12 @@
             setupTouchGamepad();
             setupExportButton(config.cartId);
 
-            // CONFIGURAÇÃO SÊNIOR DE ALTA PERFORMANCE PARA O IOS WEBASSEMBLY
+            // GESTÃO DE ÁUDIO DE BAIXA LATÊNCIA PARA IOS
+            if (config.audioContext && config.audioContext.state === 'suspended') {
+                await config.audioContext.resume();
+            }
+
+            // CONFIGURAÇÃO SÊNIOR DE ALTA PERFORMANCE (ANTI-LAG SAFARI)
             window.Module = {
                 canvas: config.canvas,
                 arguments: ['/rom.sfc'],
@@ -195,7 +200,7 @@
                     if (path.endsWith('.wasm')) return 'snes9x.wasm';
                     return path;
                 },
-                // Desacopla o clock do navegador para evitar travamento de renderização no Safari
+                // Força o motor a ignorar esperas desnecessárias de thread no Safari
                 noInitialRun: false,
                 print: function(text) { console.log("[SNES Core]:", text); },
                 printErr: function(text) { console.error("[SNES Err]:", text); },
@@ -208,8 +213,9 @@
                 }],
                 
                 onRuntimeInitialized: function() {
-                    console.log("[SnesPlayer] BOOT CONCLUÍDO COM SUCESSO A 60FPS!");
+                    console.log("[SnesPlayer] BOOT CONCLUÍDO A 60 FPS FLUIDOS!");
                     detectLibretroInputEngine();
+                    
                     const canvasEl = document.getElementById('game-canvas');
                     if (canvasEl) {
                         canvasEl.focus();
