@@ -107,11 +107,11 @@
         .portrait-only { display: flex !important; }
 
         /* =====================================================================
-           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (Posicionamento Exato do Desenho)
+           GEOMETRIA 2: MODO PAISAGEM / HORIZONTAL (HUD Flutuante com Alinhamento)
            ===================================================================== */
         @media (orientation: landscape) {
             .portrait-only { display: none !important; }
-            .landscape-only { display: block !important; }
+            .landscape-only { display: flex !important; }
 
             #app-wrapper {
                 position: relative; width: 100vw; height: 100dvh;
@@ -149,7 +149,7 @@
                 padding-bottom: 5px; pointer-events: none; display: flex !important;
             }
 
-            /* SAVE e START posicionados na esquerda (abaixo do L) */
+            /* HUD ESQUERDO: SAVE e START sob o gatilho L */
             .landscape-left-cluster {
                 position: absolute; top: 58px; left: 25px;
                 display: flex !important; flex-direction: column; gap: 8px;
@@ -159,7 +159,7 @@
                 width: 90px; height: 36px; font-size: 0.75rem; font-weight: bold;
             }
 
-            /* SELECT posicionado na direita (acima dos botões X, Y, A, B) */
+            /* HUD DIREITO: SELECT acima dos botões A/B/X/Y */
             .landscape-right-cluster {
                 position: absolute; top: 58px; right: 25px;
                 display: flex !important; flex-direction: column; gap: 8px; align-items: flex-end;
@@ -187,7 +187,6 @@
         </div>
 
         <div id="gamepad">
-            <!-- Barra Superior -->
             <div class="shoulder-bar">
                 <div class="btn-shoulder" data-key="L">L</div>
                 <button class="btn-system portrait-only" id="btn-export-save" style="width: 85px; height: 30px; font-size: 0.75rem; margin: 0;">💾 Save</button>
@@ -204,7 +203,6 @@
                     </div>
                 </div>
                 
-                <!-- Pílulas Centrais (Apenas Retrato) -->
                 <div class="center-cluster portrait-only">
                     <div class="btn-system btn-pill" data-key="SELECT">SELECT</div>
                     <div class="btn-system btn-pill" data-key="START">START</div>
@@ -221,7 +219,6 @@
             </div>
         </div>
 
-        <!-- Botões de Sistema Específicos para a Horizontal (Paisagem) nos locais exatos desenhados -->
         <div class="landscape-only landscape-left-cluster">
             <button class="btn-system landscape-left-btn btn-save" id="btn-export-save-landscape">💾 SAVE</button>
             <div class="btn-system landscape-left-btn" data-key="START">START</div>
@@ -235,6 +232,33 @@
     <script src="snes-core.js"></script>
 
     <script>
+        // =====================================================================
+        // DESPERTADOR DE ÁUDIO APPLE (FORÇA O DESBLOQUEIO DO DAC NO IPHONE 13)
+        // =====================================================================
+        async function forceAppleAudioUnlock() {
+            try {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContext({ latencyHint: 'interactive' });
+                
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                // Cria um buffer vazio de 1 milissegundo para "acordar" o hardware de som do iOS
+                const emptyBuffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = emptyBuffer;
+                source.connect(audioCtx.destination);
+                source.start(0);
+
+                console.log("[Audio Unlock] Canal de som da Apple desbloqueado com sucesso!");
+                return audioCtx;
+            } catch (e) {
+                console.warn("[Audio Unlock] Aviso ao inicializar áudio:", e);
+                return null;
+            }
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const sys = urlParams.get('c');
         const dataId = urlParams.get('id');
@@ -251,15 +275,15 @@
                 loadingOverlay.style.display = 'flex';
 
                 try {
-                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                    const audioCtx = new AudioContext();
-                    if (audioCtx.state === 'suspended') { await audioCtx.resume(); }
+                    // 1. Acorda o hardware de som no exato milissegundo do toque físico!
+                    const audioCtx = await forceAppleAudioUnlock();
 
                     const romUrl = `roms/${sys}/${dataId}`;
                     const coreUrl = `snes9x.wasm`;
 
                     appWrapper.style.display = 'flex';
 
+                    // 2. Repassa o contexto de áudio já ativado e desbloqueado para o inicializador
                     await window.SnesPlayer.init({
                         canvas: document.getElementById('game-canvas'),
                         audioContext: audioCtx,
