@@ -232,33 +232,6 @@
     <script src="snes-core.js"></script>
 
     <script>
-        // =====================================================================
-        // DESPERTADOR DE ÁUDIO APPLE (FORÇA O DESBLOQUEIO DO DAC NO IPHONE 13)
-        // =====================================================================
-        async function forceAppleAudioUnlock() {
-            try {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                const audioCtx = new AudioContext({ latencyHint: 'interactive' });
-                
-                if (audioCtx.state === 'suspended') {
-                    await audioCtx.resume();
-                }
-
-                // Cria um buffer vazio de 1 milissegundo para "acordar" o hardware de som do iOS
-                const emptyBuffer = audioCtx.createBuffer(1, 1, 22050);
-                const source = audioCtx.createBufferSource();
-                source.buffer = emptyBuffer;
-                source.connect(audioCtx.destination);
-                source.start(0);
-
-                console.log("[Audio Unlock] Canal de som da Apple desbloqueado com sucesso!");
-                return audioCtx;
-            } catch (e) {
-                console.warn("[Audio Unlock] Aviso ao inicializar áudio:", e);
-                return null;
-            }
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
         const sys = urlParams.get('c');
         const dataId = urlParams.get('id');
@@ -269,24 +242,51 @@
         const appWrapper = document.getElementById('app-wrapper');
 
         if (sys === 'snes' && dataId) {
+            
+            // OUVINTE ASSÍNCRONO COM DESBLOQUEIO DE ÁUDIO SÍNCRONO MILIMÉTRICO
             powerBtn.addEventListener('click', async function() {
                 
+                let unlockedAudioCtx = null;
+
+                // 1. AÇÃO SÍNCRONA OBRIGATÓRIA: Desbloqueia o som antes de qualquer "await"
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        unlockedAudioCtx = new AudioCtx({ latencyHint: 'interactive' });
+                        unlockedAudioCtx.resume();
+                        
+                        // Dispara um oscilador invisível para forçar a placa de som a ligar
+                        const osc = unlockedAudioCtx.createOscillator();
+                        const gain = unlockedAudioCtx.createGain();
+                        gain.gain.value = 0; // Volume Zero (Mudo)
+                        osc.connect(gain);
+                        gain.connect(unlockedAudioCtx.destination);
+                        osc.start(0);
+                        osc.stop(unlockedAudioCtx.currentTime + 0.1);
+                        
+                        // Sequestra a função global para que o emulador use obrigatoriamente este canal!
+                        window.AudioContext = function() { return unlockedAudioCtx; };
+                        window.webkitAudioContext = window.AudioContext;
+                        console.log("[Audio] Canal Apple destravado e sequestrado com sucesso!");
+                    }
+                } catch(e) {
+                    console.error("[Audio Error] Falha ao destravar DAC: ", e);
+                }
+
+                // 2. Agora sim, avançamos com a lógica visual e carregamento
                 powerScreen.style.display = 'none';
                 loadingOverlay.style.display = 'flex';
 
                 try {
-                    // 1. Acorda o hardware de som no exato milissegundo do toque físico!
-                    const audioCtx = await forceAppleAudioUnlock();
-
                     const romUrl = `roms/${sys}/${dataId}`;
                     const coreUrl = `snes9x.wasm`;
 
                     appWrapper.style.display = 'flex';
 
-                    // 2. Repassa o contexto de áudio já ativado e desbloqueado para o inicializador
+                    // 3. Inicializa o Emulador
                     await window.SnesPlayer.init({
                         canvas: document.getElementById('game-canvas'),
-                        audioContext: audioCtx,
+                        audioContext: unlockedAudioCtx,
                         corePath: coreUrl,
                         romPath: romUrl,
                         cartId: dataId
@@ -302,6 +302,7 @@
                     powerScreen.style.display = 'flex';
                 }
             }, { once: true });
+            
         } else {
             document.querySelector('.cart-status').innerText = "Cartucho Inválido";
             document.querySelector('.cart-status').style.color = "#ff0000";
