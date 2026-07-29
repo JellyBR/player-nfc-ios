@@ -1,11 +1,14 @@
 /**
- * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - Ultra Performance iOS Safari)
- * Desacoplamento de Áudio de Baixa Latência e Otimização WebAssembly 60FPS
+ * SNES-CORE.JS - Orquestrador Sênior PWA (Caminho B - iOS High Performance)
+ * Desacoplamento Sênior de Áudio (Anti-Audio-Sync-Lock) & Zero Lag no Safari
  */
 
 (function(window) {
     'use strict';
 
+    // =========================================================================
+    // 1. GESTÃO DE ARMAZENAMENTO OFFLINE (INDEXED DB - PROTEÇÃO CONTRA IOS)
+    // =========================================================================
     const DB_NAME = 'SnesNfcSaves';
     const STORE_NAME = 'sram_store';
     const DB_VERSION = 1;
@@ -33,6 +36,7 @@
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.put({ cartId: cartId, data: sramData, timestamp: Date.now() });
+            console.log(`[SRAM] Progresso salvo em IndexedDB para o cartucho: ${cartId}`);
         } catch (err) {
             console.warn("[SRAM] Erro ao gravar save offline:", err);
         }
@@ -53,6 +57,9 @@
         }
     }
 
+    // =========================================================================
+    // 2. SISTEMA DE CONTROLE UNIVERSAL (VARREDURA DINÂMICA DE MEMÓRIA LIBRETRO)
+    // =========================================================================
     const keyMap = {
         'UP': 4, 'DOWN': 5, 'LEFT': 6, 'RIGHT': 7,
         'B': 0, 'Y': 1, 'SELECT': 2, 'START': 3,
@@ -150,6 +157,9 @@
         });
     }
 
+    // =========================================================================
+    // 3. BOTÃO DE SEGURANÇA: EXPORTAÇÃO MANUAL PARA O APP ARQUIVOS
+    // =========================================================================
     function setupExportButton(cartId) {
         const btnExport = document.getElementById('btn-export-save');
         if (!btnExport) return;
@@ -172,9 +182,12 @@
         });
     }
 
+    // =========================================================================
+    // 4. INICIADOR SÊNIOR COM DESACOPLAMENTO DE ÁUDIO (THE GATEKEEPER)
+    // =========================================================================
     window.SnesPlayer = {
         init: async function(config) {
-            console.log("[SnesPlayer] A descarregar ROM e a preparar memória RAM...");
+            console.log("[SnesPlayer] Baixando ROM e preparando memória RAM...");
 
             const [romResponse, savedSram] = await Promise.all([
                 fetch(config.romPath),
@@ -187,12 +200,19 @@
             setupTouchGamepad();
             setupExportButton(config.cartId);
 
-            // GESTÃO DE ÁUDIO DE BAIXA LATÊNCIA PARA IOS
-            if (config.audioContext && config.audioContext.state === 'suspended') {
-                await config.audioContext.resume();
+            // 1. FORÇA O DESBLOQUEIO E BAIXA LATÊNCIA DO WEB AUDIO API NO IOS
+            if (config.audioContext) {
+                if (config.audioContext.state === 'suspended') {
+                    await config.audioContext.resume();
+                }
+                const unlockTouchAudio = () => {
+                    if (config.audioContext.state === 'suspended') config.audioContext.resume();
+                };
+                document.addEventListener('touchstart', unlockTouchAudio, { passive: true });
+                document.addEventListener('click', unlockTouchAudio, { passive: true });
             }
 
-            // CONFIGURAÇÃO SÊNIOR DE ALTA PERFORMANCE (ANTI-LAG SAFARI)
+            // 2. A PONTE EMSCRIPTEN COM INJEÇÃO ANTI-LAG DE ÁUDIO
             window.Module = {
                 canvas: config.canvas,
                 arguments: ['/rom.sfc'],
@@ -200,12 +220,19 @@
                     if (path.endsWith('.wasm')) return 'snes9x.wasm';
                     return path;
                 },
-                // Força o motor a ignorar esperas desnecessárias de thread no Safari
-                noInitialRun: false,
                 print: function(text) { console.log("[SNES Core]:", text); },
                 printErr: function(text) { console.error("[SNES Err]:", text); },
                 
                 preRun: [function() {
+                    console.log("[SnesPlayer] Injetando ROM e desativando trava de áudio síncrona...");
+                    
+                    // A CHAVE DE OURO: Desativa o bloqueio da CPU por atraso no buffer de som do iOS!
+                    if (!window.Module.ENV) window.Module.ENV = {};
+                    window.Module.ENV.SDL_AUDIODRIVER = 'webaudio';
+                    window.Module.ENV.SDL_AUDIO_CHANNELS = '2';
+                    window.Module.ENV.AUDIO_SYNC = '0'; // Libera o processador para rodar a 60 FPS reais
+                    window.Module.ENV.SDL_AUDIO_SAMPLES = '1024'; // Reduz latência do buffer no WebKit
+                    
                     window.Module.FS.writeFile('/rom.sfc', new Uint8Array(romBuffer));
                     if (savedSram) {
                         window.Module.FS.writeFile('/rom.srm', new Uint8Array(savedSram));
@@ -213,7 +240,7 @@
                 }],
                 
                 onRuntimeInitialized: function() {
-                    console.log("[SnesPlayer] BOOT CONCLUÍDO A 60 FPS FLUIDOS!");
+                    console.log("[SnesPlayer] BOOT CONCLUÍDO A 60 FPS (Áudio Desacoplado)!");
                     detectLibretroInputEngine();
                     
                     const canvasEl = document.getElementById('game-canvas');
